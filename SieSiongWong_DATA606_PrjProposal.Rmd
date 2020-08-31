@@ -1,0 +1,201 @@
+---
+title: "DATA 606 Project Proposal"
+author: "Sie Siong Wong"
+date: "10/13/2019"
+output: html_document
+---
+
+### Data Preparation
+
+```{r, setup, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+
+# Load the packages required to tidy and transform the data.
+
+library(dplyr)
+library(tidyr)
+library(reshape2)
+library(stringr)
+library(psych)
+library(ggplot2)
+
+
+# load data
+
+GDP <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/GDP.csv", header=TRUE, sep=",")
+
+Crime <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/Crime%20Rate.csv", header=TRUE, sep=",")
+
+Unemployment <-  read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/Unemployment%20Rate.csv", header=TRUE, sep=",")
+
+GDPvsCrime <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/GDPvsCrimebyYear.csv", header=TRUE, sep=",")
+
+# Clean and reshape the GDP data.
+
+GDP <- GDP %>% rename("States"="X")  # Change column name.
+
+GDP <- GDP %>% melt(GDP, id.vars=c("States"), measure.vars=2:ncol(GDP), variable.name="Year", value.name="GDP", na.rm=TRUE) %>% mutate(Year = as.numeric(gsub("X", "", Year))) # Turn into long form. 
+
+# Clean and reshape the Crime data.
+
+Crime <- Crime %>% rename("Year"="X") # Change column name.
+
+total_col <- apply(Crime[,-1], 1, sum)      # Change to percentage rate.
+Crime2 <- lapply(Crime[,-1], function(x) {
+  x / total_col*100
+})
+
+Crime2$Year <- Crime$Year # Merge two data frames.
+Crime2 <- merge(Crime2, Crime, by="Year")
+Crime2 <- Crime2[,-c(52:101)]
+
+
+Crime2 <- Crime2 %>% melt(Crime2, id.vars=c("Year"), measure.vars=2:ncol(Crime2), variable.name="States", value.name="CrimeRate", na.rm=TRUE)  # Turn into long form.       
+
+Crime2$States <- sub("\\.x$","", Crime2$States)
+Crime2$States <- sub("\\."," ", Crime2$States) # Remove dot in states name.
+
+
+Crime2 <- dcast(Crime2, States~Year, value.var="CrimeRate") # dcast the dataset into wide form.
+
+Crime2 <- Crime2 %>% melt(Crime2, id.vars=c("States"), measure.vars=2:ncol(Crime2), variable.name="Year", value.name="CrimeRate", na.rm=TRUE)  # Turn into long form again to make it consistent with other twos.  
+
+# Clean and reshape the Unemployment data.
+
+Unemployment <- Unemployment %>% rename("States"="X")  # Change column name.
+
+Unemployment <- Unemployment %>% melt(Unemployment, id.vars=c("States"), measure.vars=2:ncol(Unemployment), variable.name="Year", value.name="UnemploymentRate", na.rm=TRUE) %>% mutate(Year = as.numeric(gsub("X", "", Year))) # Turn into long form. 
+
+# Join the datasets into single dataset.
+
+Merged_df <- merge(GDP,Unemployment, by=c("States", "Year"))
+Merged_df <- merge(Merged_df, Crime2, by=c("States", "Year"))
+
+```
+
+
+### Research question 
+
+**Is better GDP will contribute to lower unemployment rate and/or lower violent crime rate across the states or the nation as a whole?**
+
+
+### Cases 
+
+**Each case represents a GDP, crime rat, or unemployment rate for each state. There are total of 3 datasets: GDP, Crime, Unemployment for all 50 states from year 1997 to 2014. Therefore, each dataset will have 900 observations and 2700 observations in total for the 3 datasets.**
+
+
+### Data collection 
+
+**Annual GDP Data: Data is collected and stored by Bureau of Economic Analysis.**
+
+**Annual Unemployment Rate Data: Data is collected and stored by U.S. Bureau of Labor Statistics.**
+
+**Annual Crime Rate Data: Data is collected and stored by Uniform Crime Reporting Statistics.**
+
+
+### Type of study 
+
+**This is an observational study.**
+
+
+### Data Source 
+
+**Annual GDP Data: Data is collected and stored by BEA and is available online here: https://apps.bea.gov/iTable/index_regional.cfm. The data was extracted using the BEA's interactive data table and saved to a csv file to be used for this project.**
+
+**Bureau of Economic Analysis. U.S. Department of Commerce. Retrieved [10/13/2019] from https://apps.bea.gov/iTable/index_regional.cfm.**
+
+**Annual Unemployment Rate Data: Data is collected and stored by Iowa Community Indicators Program from the BLS and is available here: https://www.icip.iastate.edu/tables/employment/unemployment-states. The data was in a excel file and was last updated on April 2016 and ready to be used for this project.**
+
+**Annual Unemployment Rates by State. (April 2016). Iowa Community Indicators Program . Retrieved from https://www.icip.iastate.edu/tables/employment/unemployment-states.**
+
+**Annual Crime Rate Data: Data is collected and stored by UCR and is available here: https://www.ucrdatatool.gov/Search/Crime/State/TrendsInOneVar.cfm?NoVariables=Y&CFID=188098989&CFTOKEN=63a6599343a03796-EA1C8CE0-D66E-C7C2-ABDE73D498B77930. The data was extracted using the site's Get Table tool and saved to a csv file to be used for this project.**
+
+**Uniform Crime Reporting Statistics. Federal Bureau of Investigation. U.S. Department of Justice. Retrieved [10/13/2019] from https://www.ucrdatatool.gov/Search/Crime/State/TrendsInOneVar.cfm?NoVariables=Y&CFID=188098989&CFTOKEN=63a6599343a03796-EA1C8CE0-D66E-C7C2-ABDE73D498B77930.**
+
+
+
+### Dependent Variable
+
+**The response variables are unemployment rate and crime rate and are numerical.**
+
+
+
+### Independent Variable
+
+**The explanatory variable is GDP and is numerical.**
+
+
+
+### Relevant summary statistics 
+
+
+```{r, eval=TRUE}
+
+## Average Annual Unemployment Rate Distribution between year 1997 and 2014.
+
+# Summary statistics for the unemployment rate variable.
+describe(Unemployment$UnemploymentRate)
+
+# Average annual unemployment rate for each state.
+UnemploymentRate_Mean <- Unemployment %>% group_by(States) %>% summarize(Average=round(mean(UnemploymentRate), digits=2))
+
+# Plot a histogram to show the distribution of the average annual unemployment rate.
+hist(UnemploymentRate_Mean$Average, main="Average Annual Unemployment Rate Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,12), xlim=c(2.5,8), col="hotpink", breaks=10)
+
+# Plot a normal Q-Q Plot to further show that the distribution of the average annual unemployment rate is close to normal distribution.
+qqnorm(UnemploymentRate_Mean$Average)
+qqline(UnemploymentRate_Mean$Average)
+
+# Plot a boxplot to show the variation of the unemployment rate across 50 states from year 1997 to 2014.
+ggplot(Unemployment, aes(x=reorder(factor(States), UnemploymentRate, fun=median),y=UnemploymentRate,fill=factor(States))) + geom_boxplot() + labs(title="Unemployment Rate by States") + ylab("%") + theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + theme(plot.title = element_text(hjust=0.5)) + theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+
+
+## Average Annual GDP Distribution between year 1997 and 2014.
+
+# Summary statistics for the GDP variable.
+describe(GDP$GDP)
+
+# Average annual GDP for each state.
+GDP_Mean <- GDP %>% group_by(States) %>% summarize(Average=round(mean(GDP), digits=2))
+
+# Plot a histogram to show the distribution of the average annual GDP.
+hist(GDP_Mean$Average, main="Average Annual GDP Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,25), col="hotpink", breaks=10)
+
+# Plot a normal Q-Q Plot to further show that the distribution of the average annual GDP is right skewed.
+qqnorm(GDP_Mean$Average)
+qqline(GDP_Mean$Average)
+
+# Plot a boxplot to show the variation of the GDP across 50 states from year 1997 to 2014.
+ggplot(GDP, aes(x=reorder(factor(States), GDP, fun=median),y=GDP,fill=factor(States))) + geom_boxplot() + labs(title="GDP by States") + ylab("%") + theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + theme(plot.title = element_text(hjust=0.5)) + theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+
+## Average Annual Crime Rate Distribution between year 1997 and 2014.
+
+# Summary statistics for the crime rate variable.
+describe(Crime2$CrimeRate)
+
+# Average annual crime rate for each state.
+Crime2_Mean <- Crime2 %>% group_by(States) %>% summarize(Average=round(mean(CrimeRate), digits=2))
+
+# Plot a histogram to show the distribution of the average annual crime rate.
+hist(Crime2_Mean$Average, main="Average Annual Crime Rate Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,25), col="hotpink", breaks=10)
+
+# Plot a normal Q-Q Plot to further show that the distribution of the average annual crime rate is right skewed.
+qqnorm(GDP_Mean$Average)
+qqline(GDP_Mean$Average)
+
+# Plot a boxplot to show the variation of the crime rate across 50 states from year 1997 to 2014.
+ggplot(Crime2, aes(x=reorder(factor(States), CrimeRate, fun=median),y=CrimeRate,fill=factor(States))) + geom_boxplot() + labs(title="Crime Rate by States") + ylab("%") + theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + theme(plot.title = element_text(hjust=0.5)) + theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+
+# Plot Average Annual GDP vs Unemployment Rate across states.
+Merged_df2 <- Merged_df %>% group_by(States) %>% summarize(Average_GDP=mean(GDP), Average_Unemployment=mean(UnemploymentRate), Average_Crime=mean(CrimeRate))
+
+ggplot(Merged_df2,aes(States)) + ggtitle("GDP vs. Unemployment Rate") + ylab("%") +  geom_line(aes(y=Average_GDP, group=1, colour="GDP")) + geom_point(aes(y=Average_GDP, group=1), color="Red") + geom_line(aes(y=Average_Unemployment, group=2, colour="Unemployment")) + geom_point(aes(y=Average_Unemployment, group=2), color="Blue") + theme(plot.title = element_text(hjust=0.5), axis.title.x=element_blank(), axis.text.x=element_text(angle=90,hjust=1), legend.position=c(0.5,0.9),legend.title=element_blank())
+
+
+# Plot Annual GDP vs Violent Crime Rate in United States.
+ggplot(GDPvsCrime,aes(x=Year)) +  geom_line(aes(y=GDPMillions, colour="GDP"))  + geom_line(aes(y=TotalCrime*10, colour="Crime")) + scale_y_continuous(sec.axis = sec_axis(~ ./100 , name = "Total Crime")) + scale_colour_manual(values=c("blue","red")) + labs(y="GDP in Millions", x="Year", colour="Parameter") + theme(legend.position=c(0.5,0.9))
+
+```
+
