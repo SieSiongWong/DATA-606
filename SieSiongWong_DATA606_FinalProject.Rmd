@@ -1,0 +1,788 @@
+---
+title: "DATA 606 Project"
+author: "Sie Siong Wong"
+date: "12/10/2019"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    toc_collapsed: yes
+    toc_float: yes
+theme: lumen
+---
+
+# Introduction
+
+I believe that most of us have heard in the daily news that economic is doing well and unemployment rate at its lowest in 10, 20, 30 years, etc. As we all know that GPD and unemployment rate is closely related. There will be no such a situation where economic is doing bad while unemployment is going down. It has to be vice versa. Strong and stable GDP growth meaning businesses are producing and selling more products or services. Therefore, businesses need to hire more in order to keep up the productivity demand. When there are more job opportunities available in the market, less people will idle at home or in the street which believe will have a greater incentive to commit a crime. It is important to keep the economic strong so that everyone will have a stable job and thus steady income and make every places in our country a safer place to live. So, it will be interesting to find out is better GDP and/or lower unemployment rate will contribute to lower violent crime rate across the states or the nation as a whole.
+
+
+# Data
+
+## Data Collection
+
+The data used in this analysis were collected from different sources as described below.
+
+1.) National and States Annual Nominal GDP: Data is collected and stored by BEA and is available online here: https://apps.bea.gov/iTable/index_regional.cfm. The data was extracted using the BEA’s interactive data table and saved to a csv file to be used for this project.
+
+2.) National and States Real GDP per Capita: Data is collected and stored by BEA and is available online here: https://apps.bea.gov/iTable/index_regional.cfm. The data was extracted using the BEA’s interactive data table and saved to a csv file to be used for this project.
+
+3.) National and States Annual Unemployment Rate: Data is collected and stored by Iowa Community Indicators Program from the BLS and is available here: https://www.icip.iastate.edu/tables/employment/unemployment-states. The data was in a excel file and was last updated on April 2016 and ready to be used for this project.
+
+4.) National and States Annual Violent Crime Rate : Data is collected and stored by UCR and is available here: https://www.ucrdatatool.gov/Search/Crime/State/TrendsInOneVar.cfm?NoVariables=Y&CFID=188098989&CFTOKEN=63a6599343a03796-EA1C8CE0-D66E-C7C2-ABDE73D498B77930. The data was extracted using the site’s Get Table tool and saved to a csv file to be used for this project.
+
+5.) States Population: Data is collected and stored by Federal Reserve Bank of St. Louis and is available here: https://fred.stlouisfed.org/search/?st=resident%20population. The data was extracted using the sites's tool and saved to a csv file to be used for this project.
+
+
+## Cases
+
+- There are total of 6 dataset: gdp, unemployment, crime, gdpcapita, nationrate, statepopulation.
+
+- gdp dataset contains annual nominal gdp in percentage for 50 states and each case represents a nominal gdp for each state from year 1997 to 2014. This dataset has 900 observations.
+
+- unemployment dataset contains annual unemployment rate in percentage for 50 states and each case represents a unemployment rate for each state from year 1997 to 2014. This dataset has 900 observations.
+
+- crime dataset contains annual total violent crime in cases for 50 states and each case represents a total violent crime for each state from year 1997 to 2014. This dataset has 900 observations.
+
+- gdpcapita dataset contains annual real gdp per capita in dollar for 50 states and each case represents a real gdp per capita for each state from year 1997 to 2014. This dataset has 900 observations.
+
+- nationrate dataset contains national annual real gdp, unemployment rate, and total violent crime and each case represents national annual real gdp, unemployment rate, and total violent crime from year 1990 to 2014. This dataset has 100 observations.
+
+- statepopulation dataset contains annual population in thousand for 50 states and each case represents annual population for each state from year 1997 to 2014. This dataset has 900 observations.
+
+
+## Variables
+
+- There are total 8 variables which are state nominal GDP, state real GDP per capita, state violent crime rate, state violent crime rate per capita, state unemployment rate, national unemployment rate, national real GDP, and national violent crime rate.
+
+- In this study, the response variable is violent crime rate and is numerical. The explanatory variables are GDP and unemployment rate and are numerical.
+
+
+## Type of Study
+
+- This will be an observational study. The data were collected by different government bureau and thus is very reliable to use in this study.
+
+
+## Scope of Inference
+
+### Generalizability
+
+-  The population of interest in this study is all states across the continental US or the nation as a whole. 
+
+- Since the collected data for all the variables are not randomly sampled, the findings of this analysis can be generalized to the population of interest. 
+
+- There could be compounding bias such as poverty rate, high school graduation rate, number of police officers that I need to take into account that could potentially prevent generalizability. 
+
+### Causality
+
+- Because this study is observational, thus the findings cannot be used to establish causal relationship and can only be used to show associations or form hypotheses. 
+
+
+# Exploratory Data Analysis
+
+## Data Preparation
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+# Load the R packages required to tidy and transform the data.
+
+library(dplyr)
+library(tidyr)
+library(psych)
+library(infer)
+library(statsr)
+library(stringr)
+library(ggplot2)
+library(reshape2)
+library(tidyverse)
+library(moderndive)
+
+# Load Data
+gdp <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/GDP.csv", header=TRUE, sep=",")
+
+crime <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/Crime%20Rate.csv", header=TRUE, sep=",")
+
+unemployment <-  read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/Unemployment%20Rate.csv", header=TRUE, sep=",")
+
+nationrate <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/NationalGDPCrimeUnemployment.csv", header=TRUE, sep=",")
+
+gdpcapita <- read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/GDPCapital.csv", header=TRUE, sep=",")
+
+statepopulation <-  read.csv("https://raw.githubusercontent.com/SieSiongWong/DATA-606/master/StatesPopulation.csv", header=TRUE, sep=",")
+
+
+## Clean and reshape the GDP data.
+
+# Change column name.
+gdp <- gdp %>% rename("States"="X")  
+gdpcapita <- gdpcapita %>% rename("States"="X") 
+
+# Turn into long form.
+gdp <- gdp %>% melt(gdp, id.vars=c("States"), measure.vars=2:ncol(gdp), variable.name="Year", value.name="GDPNominal", na.rm=TRUE) %>% mutate(Year = as.numeric(gsub("X", "", Year))) # Nominal GDP
+
+gdpcapita <- gdpcapita %>% melt(gdpcapita, id.vars=c("States"), measure.vars=2:ncol(gdpcapita), variable.name="Year", value.name="GDPCapita", na.rm=TRUE) %>% mutate(Year = as.numeric(gsub("X", "", Year))) # Real GPD Per Capita
+
+## Clean and reshape the crime data.
+
+# Change column name.
+crime <- crime %>% rename("Year"="X") 
+
+# Change to percentage rate.
+total_col <- apply(crime[,-1], 1, sum)      
+crime2 <- lapply(crime[,-1], function(x) {
+  x / total_col*100
+})
+
+# Merge two data frames.
+crime2$Year <- crime$Year 
+crime2 <- merge(crime2, crime, by="Year")
+crime2 <- crime2[,-c(52:101)]
+
+# Violent Crime Per Capita
+crime3 <- data.frame(mapply('/', crime, statepopulation))
+crime3[["Year"]] <- crime$Year
+
+# Turn into long form.
+crime2 <- crime2 %>% melt(crime2, id.vars=c("Year"), measure.vars=2:ncol(crime2), variable.name="States", value.name="CrimeRatePrc", na.rm=TRUE)         
+
+crime3 <- crime3 %>% melt(crime3, id.vars=c("Year"), measure.vars=2:ncol(crime3), variable.name="States", value.name="CrimeRatePop", na.rm=TRUE)         
+
+# Remove dot in states name.
+crime2$States <- sub("\\.x$","", crime2$States)
+crime2$States <- sub("\\."," ", crime2$States) 
+
+crime3$States <- sub("\\.x$","", crime3$States)
+crime3$States <- sub("\\."," ", crime3$States) 
+
+# Dcast the dataset into wide form.
+crime2 <- dcast(crime2, States~Year, value.var="CrimeRatePrc") 
+crime3 <- dcast(crime3, States~Year, value.var="CrimeRatePop") 
+
+# Turn into long form again to make it consistent with other twos.  
+crime2 <- crime2 %>% melt(crime2, id.vars=c("States"), measure.vars=2:ncol(crime2), variable.name="Year", value.name="CrimeRatePrc", na.rm=TRUE) 
+
+crime3 <- crime3 %>% melt(crime3, id.vars=c("States"), measure.vars=2:ncol(crime3), variable.name="Year", value.name="CrimeRatePop", na.rm=TRUE) 
+
+## Clean and reshape the Unemployment data.
+
+# Change column name.
+unemployment <- unemployment %>% rename("States"="X")  
+
+# Turn into long form. 
+unemployment <- unemployment %>% melt(unemployment, id.vars=c("States"), measure.vars=2:ncol(unemployment), variable.name="Year", value.name="UnemploymentRate", na.rm=TRUE) %>% mutate(Year = as.numeric(gsub("X", "", Year))) 
+
+## Join the datasets into single dataset.
+
+merged.df <- merge(gdp,unemployment, by=c("States", "Year"))
+merged.df <- merge(merged.df, crime2, by=c("States", "Year"))
+merged.df <- merge(merged.df, crime3, by=c("States", "Year"))
+merged.df <- merge(merged.df, gdpcapita, by=c("States", "Year"))
+head(merged.df)
+
+## Clean and reshape the national level data.
+
+# Turn nationrate dataframe into long form.
+nationrate2 <-  melt(nationrate, id.vars=c("Year"), measure.vars=2:ncol(nationrate), variable.name="Variable", value.name="Value", na.rm=TRUE)
+
+```
+
+
+## Summary Statistics & Visualization 
+
+### State Level
+
+#### Unemployment Distribution
+
+```{r, eval=TRUE}
+
+## Average annual unemployment rate distribution between year 1997 and 2014.
+
+# Summary statistics for the unemployment rate variable.
+describe(merged.df$UnemploymentRate)
+
+# Average annual unemployment rate for each state.
+unemploymentrate.mean <- merged.df %>% group_by(States) %>% summarize(Average=round(mean(UnemploymentRate), digits=2))
+
+# Plot a histogram to show the distribution of the average annual unemployment rate.
+hist(unemploymentrate.mean$Average, main="Average Annual Unemployment Rate Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,12), xlim=c(2.5,8), col="hotpink", breaks=10)
+
+# Plot a normal Q-Q Plot to further show that the distribution of the average annual unemployment rate is close to normal distribution.
+qqnorm(unemploymentrate.mean$Average)
+qqline(unemploymentrate.mean$Average)
+
+# Plot a boxplot to show the variation of the unemployment rate across 50 states from year 1997 to 2014.
+ggplot(merged.df, aes(x=reorder(States, UnemploymentRate, median, order=TRUE),y=UnemploymentRate,fill=States)) + 
+  geom_boxplot() + labs(title="Unemployment Rate by States") + 
+  ylab("%") + 
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + 
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+```
+
+We can see that the states average annual unemployment distribution histogram appears to be roughly unimodal and symmetric. Also, the normal probabiliy plot shows that the data points are lying fairly close to the straight diagonal line with minimal deviation. It is reasonable to say that it is nearly normal.
+
+From boxplot, Michigan state has the highest unemploymet rate with large variation from year 1997 to 2014. North Dakota is the lowest unemployment rate state with small variation.
+
+#### GDP Distribution
+
+```{r, eval=TRUE}
+
+## Average annual nominal GDP distribution between year 1997 and 2014.
+
+# Summary statistics for the Nominal GDP variable.
+describe(merged.df$GDPNominal)
+
+# Average annual nominal GDP for each state.
+gdp.mean <- merged.df %>% group_by(States) %>% summarize(Average=round(mean(GDPNominal), digits=2))
+
+# Plot a histogram to show the distribution of the average annual nominal GDP.
+hist(gdp.mean$Average, main="Average Annual Nominal GDP Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,25), col="hotpink", breaks=10)
+
+# Plot a normal Q-Q Plot to further show that the distribution of the average annual nominal GDP.
+qqnorm(gdp.mean$Average)
+qqline(gdp.mean$Average)
+
+# Plot a boxplot to show the variation of the nominal GDP across 50 states from year 1997 to 2014.
+ggplot(merged.df, aes(x=reorder(States, GDPNominal, median),y=GDPNominal,fill=States)) + 
+  geom_boxplot() + 
+  labs(title="Nominal GDP by States") + 
+  ylab("%") + 
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + 
+  theme(plot.title = element_text(hjust=0.5)) + 
+  theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+## Average annual real GDP per capita distribution between year 1997 and 2014.
+
+# Summary statistics for the real GDP per capita variable.
+describe(merged.df$GDPCapita)
+
+# Average annual real GDP per capita for each state.
+gdpcapital.mean <- merged.df %>% group_by(States) %>% summarize(Average=round(mean(GDPCapita), digits=2))
+
+# Plot a histogram to show the distribution of the average annual real GDP per capita.
+hist(gdpcapital.mean$Average, main="Average Annual Real GDP per Capita Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,8), xlim=c(30000,75000), col="hotpink", breaks=15)
+
+# Plot a normal Q-Q Plot to further show that the distribution of the average annual real GDP per capita.
+qqnorm(gdpcapital.mean$Average)
+qqline(gdpcapital.mean$Average)
+
+# Plot a boxplot to show the variation of the real GDP per capita across 50 states from year 1997 to 2014.
+ggplot(merged.df, aes(x=reorder(States, GDPCapita, median),y=GDPCapita,fill=States)) + 
+  geom_boxplot() + 
+  labs(title="Real GDP per Capita by States") + 
+  ylab("$") + 
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + 
+  theme(plot.title = element_text(hjust=0.5)) + 
+  theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+```
+
+Comparing both histogram of average annual nominal GDP and average annual real GDP per capita, it is obvious that nominal GDP is left skewed while real GDP per capita appears to be nearly normal. This also can be verified by looking at the normal probabiliy plot. The nominal GDP probability plot shows a curve which is bending up while real GDP per capita probability plot shows the data points are lying fairly close to the straight diagonal line with minimal deviation except end of both tails.
+
+There are almost no variation we can see in nominal GDP boxplot. However, if we look at the real GDP per capita, you can clearly see the variation for every state which looks better. As we know that every state has different population and also price change over time, and real GDP per capita take into both these factors. So, using real GDP per capita to check if there is meaningful relationship with violent crime is better because it takes into account the average GDP per person in the economy.
+
+Notice that from the nominal GDP boxplot, the top 3 GDP states are California, New York, and Texas. However, the top 3 GDP states from the real gdp per capita are Alaska, Delaware, and Connecticut. With the general sense that if a person has higher income, he/she will be unlikely to commit violent crime. As you can see in the following section that this is quite true that violent crime rate in Alaska, Delaware and Connecticut in every thousand residents are quite low especially in Connecticut.
+
+#### Crime Distribution
+
+```{r, eval=TRUE}
+
+## Average annual violent crime rate distribution between year 1997 and 2014.
+
+# Summary statistics for the crime rate variable.
+describe(merged.df$CrimeRatePrc)
+
+# Average annual crime rate for each state.
+crime2.mean <- merged.df %>% group_by(States) %>% summarize(Average=round(mean(CrimeRatePrc), digits=2))
+
+# Plot a histogram to show the distribution of the average annual crime rate.
+hist(crime2.mean$Average, main="Average Annual Crime Rate Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,25), col="hotpink", breaks=10)
+
+# Plot a normal Q-Q Plot to show that the distribution of the average annual crime rate.
+qqnorm(crime2.mean$Average)
+qqline(crime2.mean$Average)
+
+# Plot a boxplot to show the variation of the crime rate across 50 states from year 1997 to 2014.
+ggplot(merged.df, aes(x=reorder(States, CrimeRatePrc, median),y=CrimeRatePrc, fill=States)) + geom_boxplot() + 
+  labs(title="Violent Crime Rate") + 
+  ylab("%") + 
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + 
+  theme(plot.title = element_text(hjust=0.5)) + 
+  theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+## Average annual violent crime rate per thousand population distribution between year 1997 and 2014.
+
+# Summary statistics for the crime rate per thousand population variable.
+describe(merged.df$CrimeRatePop)
+
+# Average annual crime rate per thousand population for each state.
+crime3.mean <- merged.df %>% group_by(States) %>% summarize(Average=round(mean(CrimeRatePop), digits=2))
+
+# Plot a histogram to show the distribution of the average annual crime rate per thousand population.
+hist(crime3.mean$Average, main="Average Annual Crime Rate per Thousand Population Distribution", xlab="Mean", ylab="Frequency", ylim=c(0,12), col="hotpink", breaks=15)
+
+# Plot a normal Q-Q Plot to show that the distribution of the average annual crime rate per thousand population.
+qqnorm(crime3.mean$Average)
+qqline(crime3.mean$Average)
+
+# Plot a boxplot to show the variation of the crime rate per thousand population across 50 states from year 1997 to 2014.
+ggplot(crime3, aes(x=reorder(States, CrimeRatePop, median),y=CrimeRatePop, fill=States)) + geom_boxplot() + 
+  labs(title="Violent Crime Rate") + 
+  ylab("Cases per Thousand Population") + 
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x=element_text(angle=90)) + 
+  theme(plot.title = element_text(hjust=0.5)) + 
+  theme(axis.text.x = element_text(margin = margin(t = 25, r = 20, b = 0, l = 0)))
+
+```
+
+Annual average nominal GDP histogram is showing left skewed but annual average real GDP per capita appears to be roughly normal. Evidence shown in both normal probability plots also confirm that implication.
+
+There is no much variations on violent crime rate across the states. California, Florida, Texas, and New York are the top 4 in violent crime rate. But, violent crime rate normalized by population which boxplot has more variation for each state. Now, it shows Pennsylvania, South Carolina, Florida, and Ohio are the top 4 in violent crime rate for every thousand resident.
+
+But as we see in previous section California, New York and Texas are listed as top 3 nominal gdp but their violent crime rate are also in top 4. This is against our general sense that higher income will have lower chance of committing violent crime. Therefore, real GDP per capita will make more sense here to evaluate its relationship with violent crime rate.
+
+
+### National Level
+
+Lets take a look at national level Real GDP, Unemployment Rate, and Violent Crime Rate from year 1990 to 2014. As we are not comparing between countries; therefore, we don't need to consider per capita.
+
+```{r, eval=TRUE}
+
+# Summary statistics for the real GDP variable.
+describe(nationrate$GDPBillions)
+
+# Summary statistics for the violent crime variable.
+describe(nationrate$TotalCrime)
+
+# Summary statistics for the unemployment variable.
+describe(nationrate$UnemploymentRate)
+
+# Plot a boxplot to show the variation of the 3 national level variables.
+ggplot(data = nationrate2, aes(factor(Variable), Value, fill=Variable)) +
+  geom_boxplot(show.legend = FALSE) + 
+  facet_wrap(.~Variable,scales="free",ncol=3) +
+  theme(axis.text.x=element_blank(),
+        axis.title.x=element_blank(), 
+        axis.title.y = element_blank())
+
+# Plot annual real GDP and annual total violent crime.
+ggplot(nationrate,aes(x=Year)) +  
+  labs(title="Real GDP & Violent Crime Rate") +
+  geom_line(aes(y=GDPBillions, colour="GDP")) + 
+  geom_line(aes(y=TotalCrime/100, colour="Crime")) + 
+  scale_y_continuous(sec.axis = sec_axis(~ .*10 , name = "Violent Crime")) +
+  scale_colour_manual(values=c("blue","red")) +
+  labs(y="GDP in Billions", x="Year", colour="") +
+  theme(legend.position=c(0.5,0.9))
+
+# Plot annual unemployment rate and annual total violent crime.
+ggplot(nationrate,aes(x=Year)) +
+  labs(title="Unemployment Rate & Violent Crime Rate") +
+  geom_line(aes(y=UnemploymentRate, colour="Unemployment")) +
+  geom_line(aes(y=TotalCrime/100000, colour="Crime")) + 
+  scale_y_continuous(sec.axis = sec_axis(~ .*10000 , name = "Violent Crime")) +
+    scale_colour_manual(values=c("blue","red")) + 
+    labs(y="Unemployment, %", x="Year") + 
+    theme(legend.position=c(0.88,0.88)) + 
+    theme(legend.title =element_blank())
+
+```
+
+From the 3 boxplots above, we can see that all 3 variables have lots of variation between year 1990 to 2014. 
+
+From the real GDP and violent crime rate plot, notice that the real GDP is increasing while violent crime is declining from year 1990 to 2014. This could implies there is strong relationship between real GDP and violent crime over time.
+
+However, there is no obvious pattern between unemployment rate and violent crime rate over time.
+
+
+# Inference
+
+Lets evaluate the relationship between violent crime rate, GDP, and unemployment rate at both state and national levels.
+
+## Theory-based Inference for Regression
+
+### State Level
+
+Evaluate the violent crime rate per thousand population relationship with real GDP per capita and unemployment rate.
+
+```{r, eval=TRUE}
+
+par(mfrow=c(1,2))
+# Scatter plot for the response and explanatory variables.
+plot(CrimeRatePop~GDPCapita+UnemploymentRate, data=merged.df)
+
+
+par(mfrow=c(2,2))
+# Multivariate regression
+statecrime.predict.lm <- lm(CrimeRatePop~GDPCapita+UnemploymentRate, data=merged.df)
+summary(statecrime.predict.lm)
+
+# Single regression - crime vs real gdp per capita.
+statecrimepredict.lm.gdp <- lm(CrimeRatePop~GDPCapita, data=merged.df)
+summary(statecrimepredict.lm.gdp)
+
+# Single regression - crime vs unemployment.
+statecrimepredict.lm.emp <- lm(CrimeRatePop~UnemploymentRate, data=merged.df)
+summary(statecrimepredict.lm.emp)
+
+
+par(mfrow=c(2,2))
+# Residuals scatter plot for multivariate regression.
+plot(statecrime.predict.lm$residuals ~ merged.df$CrimeRatePop)
+abline(h=0, lty=3)
+
+# Residuals scallter plot for single regression - crime vs real gdp per capita.
+plot(statecrimepredict.lm.gdp$residuals ~ merged.df$CrimeRatePop)
+abline(h=0, lty=3)
+
+# Residuals scallter plot for single regression - crime vs unemployment.
+plot(statecrimepredict.lm.emp$residuals ~ merged.df$CrimeRatePop)
+abline(h=0, lty=3)
+
+
+par(mfrow=c(2,2))
+# Residuals histogram for multivariate regression.
+hist(statecrime.predict.lm$residuals)
+
+# Residuals histogram for single regression - crime vs real gdp per capita.
+hist(statecrimepredict.lm.gdp$residuals)
+
+# Residuals histogram for single regression - crime vs unemployment.
+hist(statecrimepredict.lm.emp$residuals)
+
+
+par(mfrow=c(2,2))
+# Normal probability plot of multivariate regression residuals.
+qqnorm(statecrime.predict.lm$residuals)
+qqline(statecrime.predict.lm$residuals) 
+
+# Normal probability plot of single regression - crime vs real gdp per capita.
+qqnorm(statecrimepredict.lm.gdp$residuals)
+qqline(statecrimepredict.lm.gdp$residuals)
+
+# Normal probability plot of single regression - crime vs unemployment.
+qqnorm(statecrimepredict.lm.emp$residuals)
+qqline(statecrimepredict.lm.emp$residuals) 
+
+```
+
+Interpreting regression results:
+
+For inference for regression, there are four conditions that need to be met: 1.) Linearity of relationship between variables, 2.) Independence of the residuals, 3.) Normality of the residuals, 4.) Equality of variance of the residuals. But results above show that many of these conditions were not met. For examples,
+
+- From each of the residual plot, you can see that the points in the residuals plot are not randomly dispersed around the horizontal dashed line at y = 0, form a line instead, so it does not meet the linearity condition.
+
+- From the residuals histogram, we can see that the data appears to be right skewed. Also, the normal probability plot shows that points do not align along a line and appears concave. Therefore, it does not seem the normal residuals condition is met.
+
+- Again from each of the residuals plot, we can see there is a pattern here. The spread of the residuals increases from negative residuals to positive residuals as the value of violent crime increases. So, the variation of residuals along the horizontal dashed line at y = 0 does not appear to be constant. Therefore, it also does not meet the residuals constant variability condition.
+
+Even though we can see that the p-value of real GDP per capita slope is lower than the significant level 0.05, which indicates there appears to be relationship between real GDP per capita and violent crime rate, but does not seem the relationship is strong enough to establish linearity as the R-squared or adjusted R-squared values are very small that not even 1%.
+
+Lets move on to the national level analysis.
+
+
+### National Level
+
+```{r, eval=TRUE}
+
+par(mfrow=c(1,2))
+# Scatter plot for the response and explanatory variables.
+plot(TotalCrime~GDPBillions+UnemploymentRate, data=nationrate)
+
+
+par(mfrow=c(2,2))
+# Multivariate regression
+crime.predict.lm <- lm(TotalCrime~GDPBillions+UnemploymentRate, data=nationrate)
+summary(crime.predict.lm)
+
+# Single regression - crime vs real gdp.
+crimepredict.lm.gdp <- lm(TotalCrime~GDPBillions, data=nationrate)
+summary(crimepredict.lm.gdp)
+
+# Single regression - crime vs unemployment.
+crimepredict.lm.emp <- lm(TotalCrime~UnemploymentRate, data=nationrate)
+summary(crimepredict.lm.emp)
+
+
+par(mfrow=c(2,2))
+# Residuals scatter plot for multivariate regression.
+plot(crime.predict.lm$residuals ~ nationrate$TotalCrime)
+abline(h=0, lty=3)
+
+# Residuals scallter plot for single regression - crime vs real gdp.
+plot(crimepredict.lm.gdp$residuals ~ nationrate$TotalCrime)
+abline(h=0, lty=3)
+
+# Residuals scallter plot for single regression - crime vs unemployment.
+plot(crimepredict.lm.emp$residuals ~ nationrate$TotalCrime)
+abline(h=0, lty=3)
+
+
+par(mfrow=c(2,2))
+# Residuals histogram for multivariate regression.
+hist(crime.predict.lm$residuals)
+
+# Residuals histogram for single regression - crime vs real gdp.
+hist(crimepredict.lm.gdp$residuals)
+
+# Residuals histogram for single regression - crime vs unemployment.
+hist(crimepredict.lm.emp$residuals)
+
+
+par(mfrow=c(2,2))
+# Normal probability plot of multivariate regression residuals.
+qqnorm(crime.predict.lm$residuals)
+qqline(crime.predict.lm$residuals) 
+
+# Normal probability plot of single regression - crime vs real gdp.
+qqnorm(crimepredict.lm.gdp$residuals)
+qqline(crimepredict.lm.gdp$residuals)
+
+# Normal probability plot of single regression - crime vs unemployment.
+qqnorm(crimepredict.lm.emp$residuals)
+qqline(crimepredict.lm.emp$residuals) 
+
+```
+
+Interpreting regression results:
+
+Using the values in the estimate column of the resulting regression, we could obtain the equation of the "best-fitting" regression line. Below is the linear equations for the multiple and single regression.
+
+- Multivariate regression: $\widehat { crime } = 2.733e6 - 9.460e1 * GDPBillions + 4.826e3 * UnemploymentRate$
+
+- Single regression - real gdp: $\widehat { crime } = 2.753e6 - 9.387e1 * GDPBillions$
+
+- Single regression - unemployment: $\widehat { crime } = 1688613 - 30114 * UnemploymentRate$
+
+
+You notice that the R-squared value for the multivariate regression and single regression of crime-real gdp is almost identical. This shows that adding unemployment variable has no significant effect to the model. In other words, it does not improve the proportion of variance in the violent crime variable that can be explained by the real GDP and unemployment variable. Therefore, we can simply use the simple regression model of crime-real gdp to predict violent crime rate.
+
+\[
+  {\displaystyle
+    \begin{aligned}  
+                    \widehat { crime } = 2.753e6 - 9.387e1 * GDPBillions
+    \end{aligned}
+  }
+\]
+
+When real GDP = 0, the violent crime rate is 2.753e6. For every increase of one unit in “real GDP”, there is an associated decrease, on average, of 9.387e1 units of violent crime rate, all else held constant.
+
+
+Hypothesis Test for Slope:
+
+From all the 3 regression tables, we can see that the p-value for the slope of GDPBillions variable is almost zero. Thus, we can reject the null hypothesis which assumes population slope ${ \beta  }_{ 1 }$ equals to 0. On the other hand, this suggests that there is a significant relationship between violent crime rate and real GDP. However, the p-value for the slope of UnemploymentRate is greater than the significant level (0.05) and thus we cannot reject the null hypothesis which assumes population slope ${ \beta  }_{ 2 }$ equals to 0. Therefore, we can say that there is no meaningful relationship between violent crime rate and unemployment rate.
+
+
+Confidence Interval:
+
+Below is the 95% confidence interval for the population slope ${ \beta  }_{ 1 }$ and ${ \beta  }_{ 2 }$ in multivariate regression. At particular you notice that the confidence interval for the population slope ${ \beta  }_{ 2 }$ contains 0 is equivalent to saying that there is no meaningful relationship between violent crime rate and unemployment rate which matches the conclusion from the hypothesis test.
+
+```{r, eval=TRUE}
+
+# Confidence interval for real gdp and unemployment - multivari regression.
+confint(crime.predict.lm, 'GDPBillions', level=0.95)
+confint(crime.predict.lm, 'UnemploymentRate', level=0.95)
+
+```
+
+Below is the 95% confidence interval for the population slope ${ \beta  }_{ 1 }$ in single regression between violent crime rate and real GDP. It does not contain a very particular value:  ${ \beta  }_{ 1 }$ equals 0. So, it matches the conclusion from the hypothesis test which evidence suggests that there is a meaningful relationship between violent crime rate and real GDP.
+
+```{r, eval=TRUE}
+
+# Confidence interval for real gdp - single regression.
+confint(crimepredict.lm.gdp, 'GDPBillions', level=0.95)
+
+```
+
+Same thing happens here that confidence interval for the population slope ${ \beta  }_{ 1 }$ contains 0 meaning that there is no relationship between violent crime rate and unemployment rate. This matches the conclusion from the hypothesis test which no meaningful relationship between violent crime rate and unemployment rate.
+
+```{r, eval=TRUE}
+
+# Confidence interval for unemployment - single regression.
+confint(crimepredict.lm.emp, 'UnemploymentRate', level=0.95)
+
+```
+
+
+## Conditions for Inference for Regression
+
+As for the state level, it does meet 3 out of the 4 conditions required for inference for regression. Below we will evaluate the 4 conditions at national level.
+
+1.) Linearity of relationship between variables:
+
+- From the crime-real gdp scatter plot, we can clearly see that there is a strong negative linear relationship between violent crime and real GDP variables. Also, there is no any apparent pattern in the crime- realgdp residuals plot. You can see that the points in the residual plot are randomly dispersed around the horizontal dashed line at y = 0.
+
+- There is no linear relationship between violent crime and unemployment variables as the points do not form a line, but rather a 45 degree parabola curve between x and y axis. From the crime-unemployment residual plot, you can see that the points in the residuals plot are not randomly dispersed around the horizontal dashed line at y = 0, form a line instead, so it does not met the linearity condition.
+
+2.) Independence of the residuals:
+
+- The obersevations for violent crime, real GDP, and unemployment variables are independent. For instance, the performance of previous year real GDP has no influence on the current year real GDP. It is same for the violent crime that people who committed a crime in last year has nothing to do with the current year violent crime rate.
+
+3.) Normality of the residuals:
+
+- From the crime-real gdp residuals histogram, we can see that it is nearly normal residuals. The histogram of the data appears to be nearly unimodal, symmetric, and without outliers. Also, the normal probabiliy plot shows that the data points are lying fairly close to the straight diagonal line with minimal deviation. Therefore, crime-real gdp seems reasonable to conclude that nearly normal residuals condition is met.
+
+- From the crime-unemployment residuals histogram, we can see that the data appears to be left skewed. Also, the normal probability plot shows that points do not align along a line and appears concave. Therefore, crime-unemployment does not seem the normal residuals condition is met.
+
+4.) Equality of variance of the residuals:
+
+- From the crime-real gdp residuals plot, the residuals exhibit equal variance for across all values of the crime variable. In other words, the variation of residuals along the horizontal dashed line at y = 0 appear to be reasonably constant. Therefore, it seems reasonable to conclude that the equality of variance of the residuals condition appear to have been met.
+
+- From the crime-unemployment residuals plot, we can see there is a pattern here. The spread of the residuals increases from negative residuals to positive residuals as the value of violent crime increases. So, the variation of residuals along the horizontal dashed line at y = 0 does not appear to be constant. Therefore, it also does not meet the residuals constant variability condition.
+
+As all the 4 conditions for inference for regression are met. Lets move on to the simulation-based section using national level data.
+
+
+## Simulation-based Inference for Regression
+
+### Confidence Interval for Slope
+
+Construct a 95% confidence interval for ${ \beta  }_{ 1 }$ using bootstrap distribution and percentile method.
+
+```{r, eval=TRUE}
+
+set.seed(123)
+
+## Crime vs Real GDP
+
+# Construct the bootstrap distribution for the fitted slope b1 by generating 1000 values of bootstrapped slope b1.
+btspdist.slope.gdp <- nationrate %>% 
+  specify(x=nationrate, formula=TotalCrime~GDPBillions) %>%
+  generate(reps = 1000, type = "bootstrap") %>% 
+  calculate(stat = "slope")
+
+# Visualize resulting 1000 bootstrapped values.
+visualize(btspdist.slope.gdp)
+
+# Percentile-method
+pct.ci.gdp <- btspdist.slope.gdp %>% 
+  get_confidence_interval(type = "percentile", level = 0.95)
+pct.ci.gdp
+
+```
+
+You can see that the boostrap distribution is roughly unimodal and symmetric. The resulting percentile-based confidence interval for ${ \beta  }_{ 1 }$ is (-104.0819, -79.60634) which is quite similar to the confidence interval in theory-based result (-107.0676, -80.67857).
+
+```{r, eval=TRUE}
+
+set.seed(456)
+
+## Crime vs Unemployment
+
+# Construct the bootstrap distribution for the fitted slope b1 by generating 1000 values of bootstrapped slope b1.
+btspdist.slope.emp <- nationrate %>% 
+  specify(x=nationrate, formula=TotalCrime~UnemploymentRate) %>%
+  generate(reps = 1000, type = "bootstrap") %>% 
+  calculate(stat = "slope")
+
+# Visualize resulting 1000 bootstrapped values.
+visualize(btspdist.slope.emp)
+
+# Percentile-method
+pct.ci.emp <- btspdist.slope.emp %>% 
+  get_confidence_interval(type = "percentile", level = 0.95)
+pct.ci.emp
+
+
+```
+
+You can see that the boostrap distribution is right skewed. The resulting percentile-based confidence interval for ${ \beta  }_{ 1 }$ is (-70728.25, 38809.11) which also contains 0 similar to the confidence interval in theory-based (-95574.54, 35346.2).
+
+
+### Hypothesis Test for Slope
+
+Lets conduct hypothesis test of ${ H }_{ 0 } : { \beta  }_{ 1 } = 0$ vs ${ H }_{ A } : { \beta  }_{ 1 } \neq 0$ using null distribution by assuming the null hypothesisis true and permutation test.
+
+```{r, eval=TRUE}
+
+## Crime vs Real GDP
+
+set.seed(678)
+
+# Construct null distribution of the fitted slope b1 by permutating the values of GDPBillions across the values of TotalCrime 1000 times and then calculate the slope coefficient for each of these 1000 generated samples.
+nulldist.slope.gdp <- nationrate %>% 
+  specify(x=nationrate, formula=TotalCrime~GDPBillions) %>%
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "slope")
+
+# Visualize the resulting null distribution for the fitted slope b1.
+visualize(nulldist.slope.gdp)
+
+# Observed fitted slope b1.
+obs.slope.gdp <- summary(crimepredict.lm.gdp)$coefficients[2, 1]
+
+# Visualize the p-value in the null distribution by comparing to the observed test statistic of slope b1.
+visualize(nulldist.slope.gdp) + 
+  shade_p_value(obs_stat = obs.slope.gdp, direction = "both")
+
+# Compute the numerical value of p-value.
+nulldist.slope.gdp %>% 
+  get_p_value(obs_stat = obs.slope.gdp, direction = "both")
+
+
+```
+
+From the simulation-based null distribution with the observed test statistic of slope b1, you notice that the observed fitted slope of -93.87308 falls far to the left of the null distribution. The shaded region does not overlap it and thus the p-value is 0 as computed in above. 
+
+This result matches with the theory-based result where p-value = 3.4e-13 $\approx$ 0. Therefore, we can reject the null hypothesis ${ H }_{ 0 } : { \beta  }_{ 1 } = 0$ and in favor of the alternative hypothesis ${ H }_{ A } :  { \beta  }_{ 1 } \neq 0$. This suggests that there is a significant relationship between violent crime rate and real GDP.
+
+
+```{r, eval=TRUE}
+
+## Crime vs Unemployment
+
+set.seed(910)
+
+# Construct null distribution of the fitted slope b1 by permutating the values of UnemploymentRate across the values of TotalCrime 1000 times and then calculate the slope coefficient for each of these 1000 generated samples.
+nulldist.slope.emp <- nationrate %>% 
+  specify(x=nationrate, formula=TotalCrime~UnemploymentRate) %>%
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "slope")
+
+# Visualize the resulting null distribution for the fitted slope b1.
+visualize(nulldist.slope.emp)
+
+# Observed fitted slope b1.
+obs.slope.emp <- summary(crimepredict.lm.emp)$coefficients[2, 1]
+
+# Visualize the p-value in the null distribution by comparing to the observed test statistic of b1.
+visualize(nulldist.slope.emp) + 
+  shade_p_value(obs_stat = obs.slope.emp, direction = "both")
+
+# Compute the numerical value of p-value.
+nulldist.slope.emp %>% 
+  get_p_value(obs_stat = obs.slope.emp, direction = "both")
+
+```
+
+From the simulation-based null distribution with the observed test statistic of slope b1, you notice that the observed fitted slope of -30114.17 overlaps with the null distribution and thus the p-value of 0.356 is greater than the significant level of 0.05.
+
+This result also matches with the theory-based result where p-value = 0.351. Therefore, we cannot reject the null hypothesis ${ H }_{ 0 } : { \beta  }_{ 1 } = 0$. This suggests that there is no meaningful relationship between violent crime rate and unemployment rate.
+
+
+# Conclusion
+
+For this study, I try to find out whether there is any association between violent crime and GDP and/or unemployment at state or national level. So, I hypothesized that there would be a negative correlation between these variables where better GDP and/or lower unemployment would lower violent crime rate.
+
+From the analysis results, we can see that both the simple and multiple regression at state or national level, the unemployment variable did not add value to the models nor it has a statistical meaningful relationship with violent crime rate per thousand population. Furthermore, there was surprise that even though results show real GDP capita and violent crime per thousand population are correlated and the null hypothesis can be rejected at 5% significant level, the 4 conditions required for inference for regression were not met. Therefore, the results of hypothesis tests and confidence intervals at the state level would not have valid meaning. 
+
+The results at national level shows statistically significant for both simple and multiple regression. The relationship between real GDP and violent crime rate are highly correlated. Both the p-value of slope and the R-squared value from theory-based results provide evidences that real GDP and violent crime rate have a strong meaningful relationship. In addition to that, the 4 conditions required for inference for regression were also met and thus national level data was used in simulation-based. The confidence interval and hypothesis test results produced in simulation-based are quite similar to the theory-based results. Therefore, we can conclude that real GDP is highly negative correlated with violent crime rate at national level and indicates  that strong economy could help to lower violent crime rate within United States.  
+
+Initially I assumed that states level and national level results would not have much different. However, from the results we do see they are very different. This happened could be due to a lot of variation across states while at national level it is just one observation per year for each variable. For future research, if possible we could consider to study the variables such as the high school graduation rate, poverty rate and number of police officers. 
+
+
+# References
+
+Bureau of Economic Analysis. U.S. Department of Commerce. Retrieved [10/13/2019] from https://apps.bea.gov/iTable/index_regional.cfm.
+
+Annual Unemployment Rates by State. (April 2016). Iowa Community Indicators Program . Retrieved from https://www.icip.iastate.edu/tables/employment/unemployment-states.
+
+Uniform Crime Reporting Statistics. Federal Bureau of Investigation. U.S. Department of Justice. Retrieved [10/13/2019] from https://www.ucrdatatool.gov/Search/Crime/State/TrendsInOneVar.cfm?NoVariables=Y&CFID=188098989&CFTOKEN=63a6599343a03796-EA1C8CE0-D66E-C7C2-ABDE73D498B77930.
+
+FRED Economic Data. Economic Research. Federal Reserve Bank of St. Louis. Retrieved [12/04/2019] from https://fred.stlouisfed.org/search?st=gdp.
+
+Ismay, C., & Kim, A., & McConville, K. (2019, November 25). Inference fore Regression. ModernDive. Retrieved from https://moderndive.com/10-inference-for-regression.html.
+
